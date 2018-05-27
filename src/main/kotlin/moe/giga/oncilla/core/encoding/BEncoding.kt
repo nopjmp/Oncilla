@@ -1,6 +1,5 @@
 package moe.giga.oncilla.core.encoding
 
-import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.PushbackInputStream
@@ -14,7 +13,9 @@ object BEncoding {
     const val LIST_PREFIX = 'l'
     const val MAP_PREFIX = 'd'
 
-    private abstract class TypeReader {
+    class DecoderException(message: String) : RuntimeException(message)
+
+    internal abstract class TypeReader {
         object BEInteger : TypeReader() {
             override fun readFrom(input: PushbackInputStream): Type.BEInteger {
                 val sb = StringBuilder()
@@ -23,7 +24,7 @@ object BEncoding {
                     when {
                         Character.isDigit(c) || sb.isEmpty() && c.toChar() == '-' -> sb.append(c.toChar())
                         c.toChar() == END_SUFFIX -> break@loop
-                        else -> throw IllegalArgumentException("Unexpected token while reading integer: ${c.toChar()}")
+                        else -> throw DecoderException("Unexpected token while reading integer: ${c.toChar()}")
                     }
                 }
 
@@ -57,7 +58,7 @@ object BEncoding {
                     input.unread(c)
                     val key = parse(input)
                     if (key !is Type.BEString) {
-                        throw IllegalArgumentException("Map keys must be a string found ${key.type}")
+                        throw DecoderException("Map keys must be a string found ${key.type}")
                     }
                     val value = parse(input)
                     map[key.string] = value
@@ -74,15 +75,20 @@ object BEncoding {
                     when {
                         c == ':' -> break@loop
                         Character.isDigit(c) -> sb.append(c)
-                        else -> throw IllegalArgumentException("String had non-integer length value")
+                        else -> throw DecoderException("String had non-integer length value")
                     }
                 }
 
                 val len = sb.toString().toInt()
                 sb.setLength(0)
-                for (i in 1..len) sb.append(input.read().toChar())
+                for (i in 1..len) {
+                    val c = input.read()
+                    if (c == -1)
+                        break
+                    sb.append(c.toChar())
+                }
                 val string = sb.toString()
-                if (string.length != len) throw IllegalArgumentException("String had mismatched length expected $len got ${string.length}")
+                if (string.length != len) throw DecoderException("String had mismatched length expected $len got ${string.length}")
                 return Type.BEString(string)
             }
         }
@@ -147,7 +153,7 @@ object BEncoding {
             MAP_PREFIX -> TypeReader.BEMap.readFrom(input)
             else -> {
                 if (!Character.isDigit(c)) {
-                    throw IllegalStateException("Invalid type prefix: $c")
+                    throw DecoderException("Invalid type prefix: $c")
                 }
                 input.unread(c)
                 TypeReader.BEString.readFrom(input)
@@ -156,9 +162,6 @@ object BEncoding {
     }
 
     fun parse(input: InputStream) = parse(PushbackInputStream(input))
-
-    fun parse(src: ByteArray) = parse(ByteArrayInputStream(src))
-
 
     private fun OutputStream.write(b: Char) = this.write(b.toInt())
 }

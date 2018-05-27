@@ -3,7 +3,9 @@ package moe.giga.oncilla.core.encoding
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayOutputStream
+import java.io.PushbackInputStream
 import java.math.BigInteger
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -115,5 +117,32 @@ class BEncodingTest {
         val stream = "11:some string".byteInputStream()
 
         assertEquals(BEncoding.Type.BEString("some string"), BEncoding.parse(stream))
+    }
+
+    @Test
+    fun testInvalidMap() {
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("d4:teste".byteInputStream()) }
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("di123ee".byteInputStream()) }
+    }
+
+    @Test
+    fun testInvalidInteger() {
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("iasdfe".byteInputStream()) }
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("i123ffe".byteInputStream()) }
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("i123".byteInputStream()) }
+
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("i1+1".byteInputStream()) }
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("i1-1".byteInputStream()) }
+    }
+
+    @Test
+    fun testInvalidList() {
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("li123".byteInputStream()) }
+    }
+
+    @Test
+    fun testInvalidString() {
+        assertThrows<BEncoding.DecoderException> { BEncoding.parse("12:asdf".byteInputStream()) }
+        assertThrows<BEncoding.DecoderException> { BEncoding.TypeReader.BEString.readFrom(PushbackInputStream("g:asdf".byteInputStream())) }
     }
 }
