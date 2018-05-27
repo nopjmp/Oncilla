@@ -1,6 +1,7 @@
 package moe.giga.oncilla.core.encoding
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
@@ -8,6 +9,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PushbackInputStream
 import java.math.BigInteger
+import java.util.*
 
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -119,6 +121,16 @@ class BEncodingTest {
         val stream = "12:some strîng".byteInputStream()
 
         assertEquals(BEncoding.Type.BEString("some strîng"), BEncoding.parse(stream))
+    }
+
+    @Test
+    fun testHashCodeString() {
+        val a = BEncoding.Type.BEString("some strîng")
+        val b = BEncoding.Type.BEString("some strîng@24")
+        val c = BEncoding.Type.BEString("some strîng")
+        assertEquals(a.hashCode(), c.hashCode())
+        assertNotEquals(a.hashCode(), b.hashCode())
+        assertNotEquals(a.hashCode(), Arrays.hashCode("some strîng".toByteArray()))
     }
 
     @Test

@@ -62,7 +62,7 @@ object BEncoding {
                         throw DecoderException("Map keys must be a string found ${key.type}")
                     }
                     val value = parse(input)
-                    map[key.string] = value
+                    map[key.string()] = value
                 }
                 return Type.BEMap(map)
             }
@@ -144,7 +144,7 @@ object BEncoding {
             // Overridden due to content being an array
             override fun hashCode(): Int = 31 * Arrays.hashCode(content)
 
-            val string by lazy { String(content, UTF_8) }
+            fun string() = String(content, UTF_8)
         }
 
         abstract val type: String
