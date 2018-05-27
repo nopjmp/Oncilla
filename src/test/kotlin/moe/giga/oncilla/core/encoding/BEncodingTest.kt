@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.PushbackInputStream
 import java.math.BigInteger
+
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class BEncodingTest {
@@ -104,19 +106,19 @@ class BEncodingTest {
 
     @Test
     fun testEncodingString() {
-        val value = BEncoding.Type.BEString("some string")
+        val value = BEncoding.Type.BEString("some strîng")
 
         val stream = ByteArrayOutputStream()
         value.writeTo(stream)
 
-        assertEquals("11:some string", stream.toString())
+        assertEquals("12:some strîng", stream.toString())
     }
 
     @Test
     fun testDecodingString() {
-        val stream = "11:some string".byteInputStream()
+        val stream = "12:some strîng".byteInputStream()
 
-        assertEquals(BEncoding.Type.BEString("some string"), BEncoding.parse(stream))
+        assertEquals(BEncoding.Type.BEString("some strîng"), BEncoding.parse(stream))
     }
 
     @Test
@@ -144,5 +146,17 @@ class BEncodingTest {
     fun testInvalidString() {
         assertThrows<BEncoding.DecoderException> { BEncoding.parse("12:asdf".byteInputStream()) }
         assertThrows<BEncoding.DecoderException> { BEncoding.TypeReader.BEString.readFrom(PushbackInputStream("g:asdf".byteInputStream())) }
+    }
+
+    @Test
+    fun testTorrentRead() {
+        val classLoader = javaClass.classLoader
+        val file = File(classLoader.getResource("big-buck-bunny.torrent").file)
+        val torrentData = BEncoding.parse(file.inputStream())
+
+        val stream = ByteArrayOutputStream()
+        torrentData.writeTo(stream)
+
+        assertEquals(file.readText(), stream.toString())
     }
 }

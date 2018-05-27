@@ -4,7 +4,8 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.io.PushbackInputStream
 import java.math.BigInteger
-
+import java.util.*
+import kotlin.text.Charsets.UTF_8
 
 object BEncoding {
     const val END_SUFFIX = 'e'
@@ -80,16 +81,11 @@ object BEncoding {
                 }
 
                 val len = sb.toString().toInt()
-                sb.setLength(0)
-                for (i in 1..len) {
-                    val c = input.read()
-                    if (c == -1)
-                        break
-                    sb.append(c.toChar())
-                }
-                val string = sb.toString()
-                if (string.length != len) throw DecoderException("String had mismatched length expected $len got ${string.length}")
-                return Type.BEString(string)
+
+                val byteArray = ByteArray(len)
+                val readLen = input.read(byteArray)
+                if (readLen != len) throw DecoderException("String had mismatched length expected $len got $readLen")
+                return Type.BEString(byteArray)
             }
         }
 
@@ -102,7 +98,7 @@ object BEncoding {
 
             override fun writeTo(out: OutputStream) {
                 out.write(INTEGER_PREFIX)
-                out.write(integer.toString().toByteArray())
+                out.write(integer.toString())
                 out.write(END_SUFFIX)
             }
         }
@@ -130,14 +126,25 @@ object BEncoding {
             }
         }
 
-        data class BEString(val string: String) : Type() {
+        data class BEString(val content: ByteArray) : Type() {
             override val type: String = "string"
 
+            constructor(s: String) : this(s.toByteArray())
+
             override fun writeTo(out: OutputStream) {
-                out.write(string.length.toString().toByteArray())
+                out.write(content.size.toString())
                 out.write(':')
-                out.write(string.toByteArray())
+                out.write(content)
             }
+
+            // Overridden due to content being an array
+            override fun equals(other: Any?) =
+                    this === other || (other is BEString && Arrays.equals(content, other.content))
+
+            // Overridden due to content being an array
+            override fun hashCode(): Int = 31 * Arrays.hashCode(content)
+
+            val string by lazy { String(content, UTF_8) }
         }
 
         abstract val type: String
@@ -164,4 +171,5 @@ object BEncoding {
     fun parse(input: InputStream) = parse(PushbackInputStream(input))
 
     private fun OutputStream.write(b: Char) = this.write(b.toInt())
+    private fun OutputStream.write(s: String) = this.write(s.toByteArray())
 }
