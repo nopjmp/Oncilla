@@ -14,8 +14,6 @@ object BEncoding {
     const val LIST_PREFIX = 'l'
     const val MAP_PREFIX = 'd'
 
-    val charset = Charsets.UTF_8
-
     private abstract class TypeReader {
         object BEInteger : TypeReader() {
             override fun readFrom(input: PushbackInputStream): Type.BEInteger {
@@ -25,7 +23,7 @@ object BEncoding {
                     when {
                         Character.isDigit(c) || sb.isEmpty() && c.toChar() == '-' -> sb.append(c.toChar())
                         c.toChar() == END_SUFFIX -> break@loop
-                        else -> throw IllegalArgumentException("Unexpected token while reading integer (as ${charset.displayName()}): ${c.toChar()}")
+                        else -> throw IllegalArgumentException("Unexpected token while reading integer: ${c.toChar()}")
                     }
                 }
 
